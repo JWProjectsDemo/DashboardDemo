@@ -165,8 +165,8 @@
   /* ── BOARD ── */
   #view-board { display: block; }
   #view-calendar { display: none; }
-  .board { display: flex; align-items: stretch; overflow-x: auto; }
-  .column { border-right: 1px solid var(--border); min-height: calc(100vh - 168px); display: flex; flex-direction: column; transition: background 0.15s; }
+  .board { display: grid; grid-template-columns: repeat(var(--col-count, 3), 1fr); overflow-x: auto; }
+  .column { border-right: 1px solid var(--border); min-height: calc(100vh - 168px); display: flex; flex-direction: column; transition: background 0.15s; min-width: 0; }
   .column:last-child { border-right: none; }
   .column.drag-over-col { background: #eff6ff; }
   .col-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 12px; border-bottom: 1px solid var(--border); background: var(--bg); }
@@ -453,6 +453,10 @@
         <!-- Hidden select for form value -->
         <select id="task-tag-input" style="display:none;"></select>
       </div>
+      <div class="field-group">
+        <label>Column</label>
+        <select id="task-column-input" style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;color:var(--text);font-family:var(--font);font-size:12px;outline:none;"></select>
+      </div>
       <div class="field-group"><label>Due Date (optional)</label><input type="date" id="task-date-input" /></div>
     </div>
     <div class="modal-actions">
@@ -615,6 +619,12 @@
   // ── CUSTOM TAGS ────────────────────────────────────────────
   function allTags() { const base = BASE_TAGS.filter(t => t !== 'other'); return [...base, ...customTags, 'other']; }
 
+  function rebuildColumnSelect() {
+    const sel = document.getElementById('task-column-input');
+    if (!sel) return;
+    sel.innerHTML = columns.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
+  }
+
   function rebuildTagSelect() {
     const sel = document.getElementById('task-tag-input');
     if (sel) sel.innerHTML = allTags().map(t => `<option value="${t}">${t}</option>`).join('');
@@ -669,6 +679,7 @@
   let _popTag = null;
   let _popHex = '#3b82f6';
   let _popOrigHex = '#3b82f6';
+  let _popOrigColor = null;
   let _popColorChanged = false;
   let _popHue = 220;
   let _popCursorX = 0.5;
@@ -807,13 +818,12 @@
     pop.style.top = (rect.bottom - modalRect.top + 4) + 'px';
     pop.style.left = Math.max(4, (rect.left - modalRect.left - 170)) + 'px';
     document.getElementById('pop-name').value = tag;
-    // Get current bg colour for this tag
-    const tc = getTagStyle(tag);
-    const bgMatch = tc.match(/background:([^;]+)/);
-    _popHex = bgMatch ? bgMatch[1].trim() : '#3b82f6';
-    // Set hue slider from hex
-    try { const [h] = hexToHsl(_popHex); document.getElementById('pop-hue').value = h; } catch(e) {}
-    _popOrigHex = _popHex;
+    // Get current tag colour — use the text/main colour for the picker
+    const existingColor = tagColors[tag];
+    const defaultColors = { project: '#1d4ed8', prd: '#6d28d9', rfp: '#c2410c', other: '#555555' };
+    _popHex = existingColor ? existingColor.color : (defaultColors[tag] || '#3b82f6');
+    _popOrigColor = existingColor ? { ...existingColor } : null; // save full original
+    try { _popHue = hexToHsl(_popHex)[0]; } catch(e) {}
     _popColorChanged = false;
     updatePopColour(_popHex);
     pop.classList.add('open');
@@ -979,12 +989,17 @@
       container.appendChild(colEl);
     });
 
-    // Add column button
+    // Set CSS variable for equal column widths
+    container.style.setProperty('--col-count', columns.length);
+    // Add column button (outside grid via absolute/flex trick)
     const addBtn = document.createElement('div');
     addBtn.className = 'add-col-btn';
     addBtn.title = 'Add column';
     addBtn.innerHTML = '+';
     addBtn.onclick = addColumn;
+    // Wrap board + button in a flex container so add-btn sits outside the grid
+    container.style.display = 'grid';
+    container.style.gridTemplateColumns = `repeat(${columns.length}, 1fr) 48px`;
     container.appendChild(addBtn);
 
     // Populate cards
@@ -1314,7 +1329,11 @@
     document.getElementById('modal-save-btn').textContent = 'Create Task';
     document.getElementById('task-title-input').value = '';
     document.getElementById('task-desc-input').value = '';
-    document.getElementById('task-tag-input').value = 'feature';
+    document.getElementById('task-tag-input').value = allTags()[0] || 'other';
+    renderTagPillList();
+    rebuildColumnSelect();
+    const colSel = document.getElementById('task-column-input');
+    if (colSel) colSel.value = col || (columns[0]?.id || 'todo');
     document.getElementById('task-date-input').value = '';
     document.getElementById('add-modal').classList.add('open');
     setTimeout(() => document.getElementById('task-title-input').focus(), 50);
@@ -1329,6 +1348,9 @@
     document.getElementById('task-desc-input').value = task.description || '';
     document.getElementById('task-tag-input').value = task.tag;
     renderTagPillList();
+    rebuildColumnSelect();
+    const colSel = document.getElementById('task-column-input');
+    if (colSel) colSel.value = task.column || (columns[0]?.id || 'todo');
     document.getElementById('task-date-input').value = task.dueDate || '';
     document.getElementById('add-modal').classList.add('open');
     setTimeout(() => document.getElementById('task-title-input').focus(), 50);
@@ -1341,11 +1363,12 @@
     const desc = document.getElementById('task-desc-input').value.trim();
     const tag = document.getElementById('task-tag-input').value;
     const dueDate = document.getElementById('task-date-input').value || null;
+    const column = document.getElementById('task-column-input')?.value || currentColumn;
     if (editingTaskId) {
       const task = tasks.find(t => t.id === editingTaskId);
-      if (task) { task.title = title; task.description = desc; task.tag = tag; task.dueDate = dueDate; }
+      if (task) { task.title = title; task.description = desc; task.tag = tag; task.dueDate = dueDate; task.column = column; }
     } else {
-      tasks.push({ id: crypto.randomUUID(), title, description: desc, tag, dueDate, column: currentColumn, createdAt: Date.now() });
+      tasks.push({ id: crypto.randomUUID(), title, description: desc, tag, dueDate, column, createdAt: Date.now() });
     }
     closeModal(); renderBoard(); renderCalendar(); scheduleSave();
   }
@@ -1449,7 +1472,15 @@
 
   function calChips(ds) {
     return tasks.filter(t => t.dueDate === ds)
-      .map(t => `<div class="chip col-${t.column}" data-id="${t.id}" draggable="true">${esc(t.title)}</div>`)
+      .map(t => {
+        const col = columns.find(c => c.id === t.column);
+        const chipColor = col ? col.color : '#3b82f6';
+        // Derive light bg for chip
+        const r=parseInt(chipColor.slice(1,3)||'3b',16),g=parseInt(chipColor.slice(3,5)||'82',16),b=parseInt(chipColor.slice(5,7)||'f6',16);
+        const bg=`rgb(${Math.min(255,r+100)},${Math.min(255,g+100)},${Math.min(255,b+100)})`;
+        const border=`rgb(${Math.min(255,r+50)},${Math.min(255,g+50)},${Math.min(255,b+50)})`;
+        return `<div class="chip" style="background:${bg};color:${chipColor};border-color:${border};" data-id="${t.id}" draggable="true">${esc(t.title)}</div>`;
+      })
       .join('');
   }
 
