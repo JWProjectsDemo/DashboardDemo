@@ -108,6 +108,16 @@
   }
 
   /* ── HERO SETTINGS ── */
+  /* ── HERO DRAG REPOSITION ── */
+  .hero-reposition-overlay { position: absolute; inset: 0; cursor: grab; z-index: 5; display: none; }
+  .hero-reposition-overlay.active { display: block; cursor: grabbing; }
+  .hero-reposition-overlay.idle { display: block; cursor: grab; }
+  .hero-drag-hint { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,0.55); color: #fff; font-family: var(--mono); font-size: 12px; padding: 8px 18px; border-radius: 6px; pointer-events: none; white-space: nowrap; }
+  .hero-reposition-btns { position: absolute; top: 10px; right: 10px; display: none; gap: 8px; z-index: 20; }
+  .hero-reposition-btns.show { display: flex; }
+  .hero-repo-save { font-family: var(--mono); font-size: 11px; font-weight: 600; text-transform: uppercase; color: #fff !important; background: rgba(0,0,0,0.55) !important; padding: 6px 14px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.25) !important; cursor: pointer; }
+  .hero-repo-cancel { font-family: var(--mono); font-size: 11px; font-weight: 600; text-transform: uppercase; color: rgba(255,255,255,0.8) !important; background: transparent !important; padding: 6px 10px; border-radius: 5px; cursor: pointer; }
+
   .hero-edit-btn { position: absolute; top: 12px; right: 10px; font-family: var(--mono); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.85) !important; background: rgba(0,0,0,0.3) !important; padding: 6px 14px; border-radius: 5px; cursor: pointer; z-index: 10; border: 1px solid rgba(255,255,255,0.25) !important; }
   .hero-settings-panel { display: none; background: var(--bg); border-bottom: 1px solid var(--border); padding: 18px 24px; }
   .hero-settings-panel.open { display: block; }
@@ -332,7 +342,14 @@
       <div class="hero-title" id="hero-title-el">My Dashboard</div>
       <div class="hero-subtitle" id="hero-subtitle-el">Projects · Tasks · Calendar</div>
     </div>
-    <button class="hero-edit-btn" onclick="toggleHeroSettings()">⚙ Customise</button>
+    <button class="hero-edit-btn" id="hero-edit-btn" onclick="toggleHeroSettings()">⚙ Customise</button>
+    <div class="hero-reposition-overlay" id="hero-repo-overlay">
+      <div class="hero-drag-hint">Drag image to reposition</div>
+    </div>
+    <div class="hero-reposition-btns" id="hero-repo-btns">
+      <button class="hero-repo-save" onclick="saveHeroPosition()">Save position</button>
+      <button class="hero-repo-cancel" onclick="cancelHeroPosition()">Cancel</button>
+    </div>
   </div>
 
   <!-- HERO SETTINGS PANEL -->
@@ -364,16 +381,7 @@
           <button id="hs-img-clear" onclick="clearHeroImage()" style="font-family:var(--mono);font-size:10px;font-weight:600;text-transform:uppercase;color:var(--red)!important;display:none;">Remove</button>
         </div>
       </div>
-      <div class="hs-field" id="hs-position-field" style="display:none;">
-        <label class="hs-label">Image Position (up / down)</label>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-family:var(--mono);font-size:10px;color:var(--text3);">Top</span>
-          <input type="range" id="hs-img-pos" min="0" max="100" value="50"
-            style="flex:1;cursor:pointer;accent-color:var(--text);"
-            oninput="previewImagePosition(this.value)" />
-          <span style="font-family:var(--mono);font-size:10px;color:var(--text3);">Bottom</span>
-        </div>
-      </div>
+
     </div>
     <div class="hs-row">
       <button class="hs-save-btn" onclick="saveHeroSettings()">Save</button>
@@ -851,35 +859,44 @@
     if (!_popTag) return;
     const newName = document.getElementById('pop-name')?.value.trim();
     if (!newName) return;
-    // Only update colour if user actually changed it
+
+    // Step 1: Update colour ONLY if user explicitly changed it via the picker
     if (_popColorChanged) {
       const [r,g,b] = hexToRgb(_popHex);
-      const bg = rgbToHex(Math.min(255,r+80), Math.min(255,g+80), Math.min(255,b+80));
-      const border = rgbToHex(Math.min(255,r+40), Math.min(255,g+40), Math.min(255,b+40));
+      // Derive a light bg and border from the chosen colour
+      const lighten = (v, amt) => Math.min(255, Math.round(v + (255 - v) * amt));
+      const bg     = rgbToHex(lighten(r,0.85), lighten(g,0.85), lighten(b,0.85));
+      const border = rgbToHex(lighten(r,0.55), lighten(g,0.55), lighten(b,0.55));
       tagColors[_popTag] = { bg, color: _popHex, border };
       localStorage.setItem(TAGCOLORS_KEY, JSON.stringify(tagColors));
     }
-    // Rename — allow case changes and any edit, block only exact duplicate of a *different* tag
+
+    // Step 2: Rename — allow any case/spelling change, block only true duplicate of a *different* tag
     const isDuplicate = allTags().some(t => t !== _popTag && t === newName);
     if (newName !== _popTag && !isDuplicate) {
+      // Update the tag name in BASE_TAGS or customTags
       const bi = BASE_TAGS.indexOf(_popTag);
       if (bi !== -1) BASE_TAGS[bi] = newName;
-      else { const ci = customTags.indexOf(_popTag); if (ci !== -1) customTags[ci] = newName; localStorage.setItem(TAGS_KEY, JSON.stringify(customTags)); }
-      // Move colour to new key
-      tagColors[newName] = tagColors[_popTag];
-      delete tagColors[_popTag];
-      localStorage.setItem(TAGCOLORS_KEY, JSON.stringify(tagColors));
-      // Update tasks
+      else {
+        const ci = customTags.indexOf(_popTag);
+        if (ci !== -1) customTags[ci] = newName;
+        localStorage.setItem(TAGS_KEY, JSON.stringify(customTags));
+      }
+      // Move colour entry to new key (preserving whatever colour is stored — original or updated)
+      if (tagColors[_popTag]) {
+        tagColors[newName] = tagColors[_popTag];
+        delete tagColors[_popTag];
+        localStorage.setItem(TAGCOLORS_KEY, JSON.stringify(tagColors));
+      }
+      // Update all tasks that use this tag
       tasks.forEach(t => { if (t.tag === _popTag) t.tag = newName; });
+      // Update the hidden select if it's pointing at the old name
       const sel = document.getElementById('task-tag-input');
       if (sel && sel.value === _popTag) sel.value = newName;
       _popTag = newName;
     }
-    // Also handle pure case change (same lowercase, different display)
-    else if (newName !== _popTag && isDuplicate === false) {
-      // covered above
-    }
-    loadColumns();
+
+    // Step 3: Re-render everything
     rebuildTagSelect();
     rebuildFilterBar();
     renderTagPillList();
@@ -1720,8 +1737,7 @@
       img.src = s.imgData; img.style.display = 'block';
       const pos = s.imgPos !== undefined ? s.imgPos : 50;
       img.style.objectPosition = `center ${pos}%`;
-      document.getElementById('hs-img-pos').value = pos;
-      document.getElementById('hs-position-field').style.display = 'block';
+      _heroCurPos = pos; _heroStartPos = pos;
       document.getElementById('hs-img-name').textContent = s.imgName || 'Image set';
       document.getElementById('hs-img-clear').style.display = 'inline';
     }
@@ -1738,14 +1754,99 @@
       document.getElementById('hero-banner').style.background = '';
       document.getElementById('hs-img-name').textContent = file.name;
       document.getElementById('hs-img-clear').style.display = 'inline';
-      document.getElementById('hs-position-field').style.display = 'block';
+      // Enter drag-to-reposition mode
+      setTimeout(enterHeroReposition, 100);
     };
     reader.readAsDataURL(file);
   }
 
-  function previewImagePosition(val) {
+  // ── HERO DRAG REPOSITION ─────────────────────────────────
+  let _heroDragY = null;
+  let _heroStartPos = 50;
+  let _heroCurPos = 50;
+  let _heroTempPos = 50;
+
+  function enterHeroReposition() {
+    const overlay = document.getElementById('hero-repo-overlay');
+    const btns = document.getElementById('hero-repo-btns');
+    const editBtn = document.getElementById('hero-edit-btn');
+    if (!overlay) return;
     const img = document.getElementById('hero-img');
-    if (img) img.style.objectPosition = `center ${val}%`;
+    // Get current position
+    const posMatch = (img.style.objectPosition || 'center 50%').match(/(\d+)%/);
+    _heroStartPos = posMatch ? parseInt(posMatch[1]) : 50;
+    _heroCurPos = _heroStartPos;
+    overlay.classList.add('idle');
+    btns.classList.add('show');
+    if (editBtn) editBtn.style.display = 'none';
+    setupHeroDrag(overlay);
+  }
+
+  function setupHeroDrag(overlay) {
+    if (overlay._dragSetup) return;
+    overlay._dragSetup = true;
+    overlay.addEventListener('mousedown', e => {
+      _heroDragY = e.clientY;
+      overlay.classList.add('active');
+      overlay.classList.remove('idle');
+    });
+    document.addEventListener('mousemove', e => {
+      if (_heroDragY === null) return;
+      const img = document.getElementById('hero-img');
+      const hero = document.getElementById('hero-banner');
+      const dy = e.clientY - _heroDragY;
+      // Dragging up = move image down (show more bottom), drag down = show more top
+      const heroH = hero.offsetHeight;
+      const deltaPercent = (dy / heroH) * -100;
+      _heroCurPos = Math.max(0, Math.min(100, _heroStartPos + deltaPercent));
+      if (img) img.style.objectPosition = `center ${_heroCurPos}%`;
+    });
+    document.addEventListener('mouseup', () => {
+      if (_heroDragY !== null) {
+        _heroDragY = null;
+        _heroStartPos = _heroCurPos;
+        overlay.classList.remove('active');
+        overlay.classList.add('idle');
+      }
+    });
+    // Touch support
+    overlay.addEventListener('touchstart', e => { _heroDragY = e.touches[0].clientY; }, {passive:true});
+    document.addEventListener('touchmove', e => {
+      if (_heroDragY === null) return;
+      const img = document.getElementById('hero-img');
+      const hero = document.getElementById('hero-banner');
+      const dy = e.touches[0].clientY - _heroDragY;
+      const heroH = hero.offsetHeight;
+      const deltaPercent = (dy / heroH) * -100;
+      _heroCurPos = Math.max(0, Math.min(100, _heroStartPos + deltaPercent));
+      if (img) img.style.objectPosition = `center ${_heroCurPos}%`;
+    }, {passive:true});
+    document.addEventListener('touchend', () => {
+      _heroDragY = null;
+      _heroStartPos = _heroCurPos;
+    });
+  }
+
+  function saveHeroPosition() {
+    const s = JSON.parse(localStorage.getItem(HERO_KEY) || '{}');
+    s.imgPos = Math.round(_heroCurPos);
+    localStorage.setItem(HERO_KEY, JSON.stringify(s));
+    exitHeroReposition();
+  }
+
+  function cancelHeroPosition() {
+    const img = document.getElementById('hero-img');
+    if (img) img.style.objectPosition = `center ${_heroStartPos}%`;
+    exitHeroReposition();
+  }
+
+  function exitHeroReposition() {
+    const overlay = document.getElementById('hero-repo-overlay');
+    const btns = document.getElementById('hero-repo-btns');
+    const editBtn = document.getElementById('hero-edit-btn');
+    if (overlay) { overlay.classList.remove('active','idle'); overlay._dragSetup = false; }
+    if (btns) btns.classList.remove('show');
+    if (editBtn) editBtn.style.display = '';
   }
 
   function clearHeroImage() {
@@ -1755,8 +1856,8 @@
     document.getElementById('hs-img-file').value = '';
     document.getElementById('hs-img-name').textContent = 'No file chosen';
     document.getElementById('hs-img-clear').style.display = 'none';
-    document.getElementById('hs-position-field').style.display = 'none';
-    document.getElementById('hs-img-pos').value = 50;
+    exitHeroReposition();
+    _heroCurPos = 50; _heroStartPos = 50;
     const s = JSON.parse(localStorage.getItem(HERO_KEY) || '{}');
     delete s.imgData; delete s.imgName;
     localStorage.setItem(HERO_KEY, JSON.stringify(s));
@@ -1767,6 +1868,10 @@
   function toggleHeroSettings() {
     const panel = document.getElementById('hero-settings-panel');
     panel.classList.toggle('open');
+    // Always restore the edit button and exit reposition mode when panel closes
+    if (!panel.classList.contains('open')) {
+      exitHeroReposition();
+    }
   }
 
   function saveHeroSettings() {
@@ -1777,7 +1882,7 @@
     const imgData  = img.src && img.src.startsWith('data:') ? img.src : null;
     const imgName  = document.getElementById('hs-img-name').textContent;
 
-    const imgPos = document.getElementById('hs-img-pos').value;
+    const imgPos = Math.round(_heroCurPos);
     const s = { title, subtitle, color };
     if (imgData) { s.imgData = imgData; s.imgName = imgName; s.imgPos = imgPos; }
     localStorage.setItem(HERO_KEY, JSON.stringify(s));
@@ -1793,6 +1898,7 @@
       img.style.display = 'none';
       banner.style.background = color;
     }
+    exitHeroReposition();
     toggleHeroSettings();
   }
 
