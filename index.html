@@ -108,7 +108,7 @@
   }
 
   /* ── HERO SETTINGS ── */
-  .hero-edit-btn { position: absolute; top: 12px; right: 20px; font-family: var(--mono); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.85) !important; background: rgba(0,0,0,0.3) !important; padding: 6px 14px; border-radius: 5px; cursor: pointer; z-index: 10; border: 1px solid rgba(255,255,255,0.25) !important; }
+  .hero-edit-btn { position: absolute; top: 12px; right: 10px; font-family: var(--mono); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.85) !important; background: rgba(0,0,0,0.3) !important; padding: 6px 14px; border-radius: 5px; cursor: pointer; z-index: 10; border: 1px solid rgba(255,255,255,0.25) !important; }
   .hero-settings-panel { display: none; background: var(--bg); border-bottom: 1px solid var(--border); padding: 18px 24px; }
   .hero-settings-panel.open { display: block; }
   .hero-settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -362,6 +362,16 @@
           </label>
           <span id="hs-img-name" style="font-family:var(--mono);font-size:10px;color:var(--text3);">No file chosen</span>
           <button id="hs-img-clear" onclick="clearHeroImage()" style="font-family:var(--mono);font-size:10px;font-weight:600;text-transform:uppercase;color:var(--red)!important;display:none;">Remove</button>
+        </div>
+      </div>
+      <div class="hs-field" id="hs-position-field" style="display:none;">
+        <label class="hs-label">Image Position (up / down)</label>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--text3);">Top</span>
+          <input type="range" id="hs-img-pos" min="0" max="100" value="50"
+            style="flex:1;cursor:pointer;accent-color:var(--text);"
+            oninput="previewImagePosition(this.value)" />
+          <span style="font-family:var(--mono);font-size:10px;color:var(--text3);">Bottom</span>
         </div>
       </div>
     </div>
@@ -634,7 +644,7 @@
   function renderTagPillList() {
     const list = document.getElementById('tag-pill-list');
     if (!list) return;
-    const current = document.getElementById('task-tag-input')?.value || allTags()[0];
+    const current = document.getElementById('task-tag-input')?.value || '';
     list.innerHTML = allTags().map(tag => {
       const s = getTagStyle(tag);
       const isSelected = tag === current;
@@ -781,7 +791,6 @@
       cv.addEventListener('mousedown', e => { dragging = true; pickFromCanvas(e); });
       document.addEventListener('mousemove', e => { if (dragging) pickFromCanvas(e); });
       document.addEventListener('mouseup', () => { dragging = false; });
-      cv.addEventListener('click', pickFromCanvas);
     }
     if (hv && !hv._setup) {
       hv._setup = true;
@@ -789,7 +798,6 @@
       hv.addEventListener('mousedown', e => { dragging = true; pickFromHue(e); });
       document.addEventListener('mousemove', e => { if (dragging) pickFromHue(e); });
       document.addEventListener('mouseup', () => { dragging = false; });
-      hv.addEventListener('click', pickFromHue);
     }
   }
 
@@ -803,6 +811,7 @@
 
   function onHexInput(val) {
     if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+      if (val !== _popOrigHex) _popColorChanged = true;
       _popHex = val;
       updatePopColour(val);
       try { const [h] = hexToHsl(val); _popHue = h; drawHueCanvas(); drawPopCanvas(); } catch(e) {}
@@ -822,7 +831,8 @@
     const existingColor = tagColors[tag];
     const defaultColors = { project: '#1d4ed8', prd: '#6d28d9', rfp: '#c2410c', other: '#555555' };
     _popHex = existingColor ? existingColor.color : (defaultColors[tag] || '#3b82f6');
-    _popOrigColor = existingColor ? { ...existingColor } : null; // save full original
+    _popOrigColor = existingColor ? { ...existingColor } : null;
+    _popOrigHex = _popHex; // snapshot for change detection
     try { _popHue = hexToHsl(_popHex)[0]; } catch(e) {}
     _popColorChanged = false;
     updatePopColour(_popHex);
@@ -889,18 +899,22 @@
   function renderSelectedTag(tag) {
     const display = document.getElementById('tag-selected-display');
     if (!display) return;
-    if (!tag) { display.innerHTML = ''; return; }
+    if (!tag) {
+      display.innerHTML = `<span style="font-family:var(--mono);font-size:11px;color:var(--text3);font-style:italic;">No tag</span>`;
+      return;
+    }
     const s = getTagStyle(tag);
     display.innerHTML = `<span class="tag-selected-pill" style="${s}">${tag} <span class="tag-x" onclick="selectTag('')">×</span></span>`;
   }
 
   function selectTag(tag) {
     const sel = document.getElementById('task-tag-input');
-    if (sel) sel.value = tag || allTags()[0];
+    if (sel) sel.value = tag || '';
     renderTagPillList();
   }
 
   function getTagStyle(tag) {
+    if (!tag) return 'background:var(--bg3);color:var(--text3);border-color:var(--border);';
     if (tagColors[tag]) {
       const c = tagColors[tag];
       return `background:${c.bg};color:${c.color};border-color:${c.border};`;
@@ -1295,7 +1309,7 @@
       </div>
       ${task.description ? `<div class="task-desc">${esc(task.description)}</div>` : ''}
       ${dateBadge}
-      <div class="task-footer"><span class="tag" style="${getTagStyle(task.tag)}">${task.tag}</span></div>
+      <div class="task-footer">${task.tag ? `<span class="tag" style="${getTagStyle(task.tag)}">${task.tag}</span>` : ''}</div>
     `;
     return card;
   }
@@ -1329,7 +1343,7 @@
     document.getElementById('modal-save-btn').textContent = 'Create Task';
     document.getElementById('task-title-input').value = '';
     document.getElementById('task-desc-input').value = '';
-    document.getElementById('task-tag-input').value = allTags()[0] || 'other';
+    document.getElementById('task-tag-input').value = '';
     renderTagPillList();
     rebuildColumnSelect();
     const colSel = document.getElementById('task-column-input');
@@ -1346,7 +1360,7 @@
     document.getElementById('modal-save-btn').textContent = 'Save Changes';
     document.getElementById('task-title-input').value = task.title;
     document.getElementById('task-desc-input').value = task.description || '';
-    document.getElementById('task-tag-input').value = task.tag;
+    document.getElementById('task-tag-input').value = task.tag || '';
     renderTagPillList();
     rebuildColumnSelect();
     const colSel = document.getElementById('task-column-input');
@@ -1361,7 +1375,7 @@
   function saveTask() {
     const title = document.getElementById('task-title-input').value.trim(); if (!title) return;
     const desc = document.getElementById('task-desc-input').value.trim();
-    const tag = document.getElementById('task-tag-input').value;
+    const tag = document.getElementById('task-tag-input').value || null;
     const dueDate = document.getElementById('task-date-input').value || null;
     const column = document.getElementById('task-column-input')?.value || currentColumn;
     if (editingTaskId) {
@@ -1473,13 +1487,16 @@
   function calChips(ds) {
     return tasks.filter(t => t.dueDate === ds)
       .map(t => {
-        const col = columns.find(c => c.id === t.column);
-        const chipColor = col ? col.color : '#3b82f6';
-        // Derive light bg for chip
-        const r=parseInt(chipColor.slice(1,3)||'3b',16),g=parseInt(chipColor.slice(3,5)||'82',16),b=parseInt(chipColor.slice(5,7)||'f6',16);
-        const bg=`rgb(${Math.min(255,r+100)},${Math.min(255,g+100)},${Math.min(255,b+100)})`;
-        const border=`rgb(${Math.min(255,r+50)},${Math.min(255,g+50)},${Math.min(255,b+50)})`;
-        return `<div class="chip" style="background:${bg};color:${chipColor};border-color:${border};" data-id="${t.id}" draggable="true">${esc(t.title)}</div>`;
+        // Use tag colour — fall back to a neutral grey if no tag
+        const tagStyle = getTagStyle(t.tag);
+        // Extract bg, color, border from the inline style string
+        const bgMatch = tagStyle.match(/background:([^;]+)/);
+        const colorMatch = tagStyle.match(/color:([^;]+)/);
+        const borderMatch = tagStyle.match(/border-color:([^;]+)/);
+        const bg = bgMatch ? bgMatch[1].trim() : '#f0f0f0';
+        const color = colorMatch ? colorMatch[1].trim() : '#555';
+        const border = borderMatch ? borderMatch[1].trim() : '#ccc';
+        return `<div class="chip" style="background:${bg};color:${color};border-color:${border};" data-id="${t.id}" draggable="true">${esc(t.title)}</div>`;
       })
       .join('');
   }
@@ -1701,6 +1718,10 @@
     if (s.imgData)  {
       const img = document.getElementById('hero-img');
       img.src = s.imgData; img.style.display = 'block';
+      const pos = s.imgPos !== undefined ? s.imgPos : 50;
+      img.style.objectPosition = `center ${pos}%`;
+      document.getElementById('hs-img-pos').value = pos;
+      document.getElementById('hs-position-field').style.display = 'block';
       document.getElementById('hs-img-name').textContent = s.imgName || 'Image set';
       document.getElementById('hs-img-clear').style.display = 'inline';
     }
@@ -1717,16 +1738,25 @@
       document.getElementById('hero-banner').style.background = '';
       document.getElementById('hs-img-name').textContent = file.name;
       document.getElementById('hs-img-clear').style.display = 'inline';
+      document.getElementById('hs-position-field').style.display = 'block';
     };
     reader.readAsDataURL(file);
+  }
+
+  function previewImagePosition(val) {
+    const img = document.getElementById('hero-img');
+    if (img) img.style.objectPosition = `center ${val}%`;
   }
 
   function clearHeroImage() {
     const img = document.getElementById('hero-img');
     img.src = ''; img.style.display = 'none';
+    img.style.objectPosition = 'center 50%';
     document.getElementById('hs-img-file').value = '';
     document.getElementById('hs-img-name').textContent = 'No file chosen';
     document.getElementById('hs-img-clear').style.display = 'none';
+    document.getElementById('hs-position-field').style.display = 'none';
+    document.getElementById('hs-img-pos').value = 50;
     const s = JSON.parse(localStorage.getItem(HERO_KEY) || '{}');
     delete s.imgData; delete s.imgName;
     localStorage.setItem(HERO_KEY, JSON.stringify(s));
@@ -1747,8 +1777,9 @@
     const imgData  = img.src && img.src.startsWith('data:') ? img.src : null;
     const imgName  = document.getElementById('hs-img-name').textContent;
 
+    const imgPos = document.getElementById('hs-img-pos').value;
     const s = { title, subtitle, color };
-    if (imgData) { s.imgData = imgData; s.imgName = imgName; }
+    if (imgData) { s.imgData = imgData; s.imgName = imgName; s.imgPos = imgPos; }
     localStorage.setItem(HERO_KEY, JSON.stringify(s));
 
     document.getElementById('hero-title-el').textContent    = title    || 'My Dashboard';
@@ -1757,6 +1788,7 @@
     const banner = document.getElementById('hero-banner');
     if (imgData) {
       banner.style.background = '';
+      img.style.objectPosition = `center ${imgPos}%`;
     } else {
       img.style.display = 'none';
       banner.style.background = color;
