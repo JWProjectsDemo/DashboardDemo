@@ -108,7 +108,7 @@
   }
 
   /* ── HERO SETTINGS ── */
-  .hero-edit-btn { position: absolute; top: 10px; right: 12px; font-family: var(--mono); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.7) !important; background: rgba(0,0,0,0.25) !important; padding: 4px 10px; border-radius: 4px; cursor: pointer; z-index: 10; border: 1px solid rgba(255,255,255,0.2) !important; }
+  .hero-edit-btn { position: absolute; top: 12px; right: 20px; font-family: var(--mono); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.85) !important; background: rgba(0,0,0,0.3) !important; padding: 6px 14px; border-radius: 5px; cursor: pointer; z-index: 10; border: 1px solid rgba(255,255,255,0.25) !important; }
   .hero-settings-panel { display: none; background: var(--bg); border-bottom: 1px solid var(--border); padding: 18px 24px; }
   .hero-settings-panel.open { display: block; }
   .hero-settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -165,7 +165,7 @@
   /* ── BOARD ── */
   #view-board { display: block; }
   #view-calendar { display: none; }
-  .board { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .board { display: flex; align-items: stretch; overflow-x: auto; }
   .column { border-right: 1px solid var(--border); min-height: calc(100vh - 168px); display: flex; flex-direction: column; transition: background 0.15s; }
   .column:last-child { border-right: none; }
   .column.drag-over-col { background: #eff6ff; }
@@ -196,6 +196,18 @@
   .tag-rfp      { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
   .tag-other, .tag-custom { background: var(--bg2); color: var(--text2); border-color: var(--border); }
   .empty-col { padding: 20px; text-align: center; font-size: 11px; color: var(--text3); font-family: var(--mono); }
+
+  /* ── COLUMN MANAGEMENT ── */
+  .col-dots-btn { font-size: 14px; color: var(--text3) !important; padding: 2px 6px; letter-spacing: 1px; }
+  .col-popover { position: fixed; z-index: 400; background: var(--bg); border: 1px solid var(--border2); border-radius: 8px; padding: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); width: 188px; display: none; }
+  .col-popover.open { display: block; }
+  .col-pop-item { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 5px; cursor: pointer; font-family: var(--mono); font-size: 11px; font-weight: 500; }
+  .col-pop-item:hover { background: var(--bg2); }
+  .col-pop-item.danger { color: var(--red) !important; }
+  .col-pop-input { width: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 5px 8px; font-family: var(--mono); font-size: 11px; color: var(--text); outline: none; box-sizing: border-box; margin-bottom: 6px; display: none; }
+  .col-pop-input:focus { border-color: var(--text); }
+  .add-col-btn { display: flex; align-items: center; justify-content: center; min-width: 48px; border-right: 1px solid var(--border); background: var(--bg2); cursor: pointer; color: var(--text3) !important; font-size: 20px; font-weight: 300; flex-shrink: 0; }
+  .add-col-btn:hover { background: var(--bg3); }
 
   /* ── MODAL ── */
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 200; align-items: center; justify-content: center; }
@@ -238,7 +250,7 @@
   /* ── CALENDAR ── */
   .cal-wrap { padding: 28px 24px 24px; }
   .cal-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; overflow: hidden; }
-  .cal-nav-title { font-size: 15px; font-weight: 500; font-family: var(--mono); flex: 1; min-width: 140px; }
+  .cal-nav-title { font-size: 15px; font-weight: 500; font-family: var(--mono); min-width: 0; white-space: nowrap; }
   .cal-view-sw { display: flex; gap: 14px; margin-left: auto; }
   .cal-vsb { font-family: var(--mono); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; padding: 4px 6px; color: var(--text3) !important; }
   .cal-vsb.active { color: #1a1a1a !important; text-decoration: underline !important; text-underline-offset: 4px; }
@@ -387,29 +399,7 @@
       <button class="tag-filter-btn" data-tag="other" onclick="setFilter('other',this)">Other</button>
 
     </div>
-    <div class="board">
-      <div class="column" id="board-col-todo" ondragover="colDragOver(event,'todo')" ondragleave="colDragLeave(event,'todo')" ondrop="colDrop(event,'todo')">
-        <div class="col-header">
-          <div class="col-title"><div class="col-dot" style="background:var(--col-todo)"></div>To Do<span class="col-count" id="count-todo">0</span></div>
-
-        </div>
-        <div class="col-body" id="col-todo"></div>
-      </div>
-      <div class="column" id="board-col-inprogress" ondragover="colDragOver(event,'inprogress')" ondragleave="colDragLeave(event,'inprogress')" ondrop="colDrop(event,'inprogress')">
-        <div class="col-header">
-          <div class="col-title"><div class="col-dot" style="background:var(--col-prog)"></div>In Progress<span class="col-count" id="count-inprogress">0</span></div>
-
-        </div>
-        <div class="col-body" id="col-inprogress"></div>
-      </div>
-      <div class="column" id="board-col-completed" ondragover="colDragOver(event,'completed')" ondragleave="colDragLeave(event,'completed')" ondrop="colDrop(event,'completed')">
-        <div class="col-header">
-          <div class="col-title"><div class="col-dot" style="background:var(--col-done)"></div>Completed<span class="col-count" id="count-completed">0</span></div>
-
-        </div>
-        <div class="col-body" id="col-completed"></div>
-      </div>
-    </div>
+    <div class="board" id="board-container"></div>
   </div>
 
   <!-- CALENDAR -->
@@ -417,7 +407,7 @@
     <div class="cal-wrap">
       <div class="cal-nav">
         <button class="btn-text" onclick="calToday()">Today</button>
-        <div style="display:flex;align-items:center;gap:10px;">
+        <div style="display:flex;align-items:center;gap:12px;">
           <button class="btn-text" onclick="calPrev()">← Prev</button>
           <span class="cal-nav-title" id="cal-title"></span>
           <button class="btn-text" onclick="calNext()">Next →</button>
@@ -488,6 +478,15 @@
   let customTags = [];
   let tagColors = {}; // tag -> { bg, color, border }
 
+  // ── COLUMN STATE ──────────────────────────────────────────
+  const COLS_KEY = 'board_columns';
+  let columns = [
+    { id: 'todo',       label: 'To Do',       color: 'var(--col-todo)' },
+    { id: 'inprogress', label: 'In Progress',  color: 'var(--col-prog)' },
+    { id: 'completed',  label: 'Completed',    color: 'var(--col-done)' },
+  ];
+  let _colPopId = null;
+
   const PASS_KEY = 'board_pass_hash';
   const TOKEN_KEY = 'board_gh_token';
   const GIST_KEY = 'board_gist_id';
@@ -556,6 +555,7 @@
     const now = new Date(); calYear = now.getFullYear(); calMonth = now.getMonth(); calDay = now.getDate();
     customTags = JSON.parse(localStorage.getItem(TAGS_KEY) || '[]');
     tagColors = JSON.parse(localStorage.getItem(TAGCOLORS_KEY) || '{}');
+    loadColumns();
     rebuildTagSelect();
     rebuildFilterBar();
     setSyncStatus('saving');
@@ -668,6 +668,8 @@
 
   let _popTag = null;
   let _popHex = '#3b82f6';
+  let _popOrigHex = '#3b82f6';
+  let _popColorChanged = false;
   let _popHue = 220;
   let _popCursorX = 0.5;
   let _popCursorY = 0.25;
@@ -736,6 +738,7 @@
     const ctx = canvas.getContext('2d');
     const px = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data;
     _popHex = rgbToHex(px[0],px[1],px[2]);
+    _popColorChanged = true;
     drawPopCanvas();
     updatePopColour(_popHex);
   }
@@ -810,6 +813,8 @@
     _popHex = bgMatch ? bgMatch[1].trim() : '#3b82f6';
     // Set hue slider from hex
     try { const [h] = hexToHsl(_popHex); document.getElementById('pop-hue').value = h; } catch(e) {}
+    _popOrigHex = _popHex;
+    _popColorChanged = false;
     updatePopColour(_popHex);
     pop.classList.add('open');
     setTimeout(() => { drawPopCanvas(); drawHueCanvas(); setupPickerEvents(); }, 20);
@@ -826,12 +831,14 @@
     if (!_popTag) return;
     const newName = document.getElementById('pop-name')?.value.trim();
     if (!newName) return;
-    // Apply colour
-    const [r,g,b] = hexToRgb(_popHex);
-    const bg = rgbToHex(Math.min(255,r+80), Math.min(255,g+80), Math.min(255,b+80));
-    const border = rgbToHex(Math.min(255,r+40), Math.min(255,g+40), Math.min(255,b+40));
-    tagColors[_popTag] = { bg, color: _popHex, border };
-    localStorage.setItem(TAGCOLORS_KEY, JSON.stringify(tagColors));
+    // Only update colour if user actually changed it
+    if (_popColorChanged) {
+      const [r,g,b] = hexToRgb(_popHex);
+      const bg = rgbToHex(Math.min(255,r+80), Math.min(255,g+80), Math.min(255,b+80));
+      const border = rgbToHex(Math.min(255,r+40), Math.min(255,g+40), Math.min(255,b+40));
+      tagColors[_popTag] = { bg, color: _popHex, border };
+      localStorage.setItem(TAGCOLORS_KEY, JSON.stringify(tagColors));
+    }
     // Rename — allow case changes and any edit, block only exact duplicate of a *different* tag
     const isDuplicate = allTags().some(t => t !== _popTag && t === newName);
     if (newName !== _popTag && !isDuplicate) {
@@ -852,6 +859,7 @@
     else if (newName !== _popTag && isDuplicate === false) {
       // covered above
     }
+    loadColumns();
     rebuildTagSelect();
     rebuildFilterBar();
     renderTagPillList();
@@ -927,21 +935,314 @@
     localStorage.setItem(TAGS_KEY, JSON.stringify(customTags));
     input.value = '';
     toggleNewTagInput();
+    loadColumns();
     rebuildTagSelect();
     rebuildFilterBar();
   }
 
   // ── BOARD RENDER ───────────────────────────────────────────
   function renderBoard() {
-    ['todo','inprogress','completed'].forEach(col => {
-      const el = document.getElementById('col-' + col);
-      const colTasks = tasks.filter(t => t.column === col);
-      document.getElementById('count-' + col).textContent = colTasks.length;
-      el.innerHTML = '';
+    const container = document.getElementById('board-container');
+    if (!container) return;
+
+    // Save scroll positions
+    const scrolls = {};
+    columns.forEach(c => {
+      const b = document.getElementById('col-' + c.id);
+      if (b) scrolls[c.id] = b.scrollTop;
+    });
+
+    container.innerHTML = '';
+
+    columns.forEach(col => {
+      const colTasks = tasks.filter(t => t.column === col.id);
+
+      const colEl = document.createElement('div');
+      colEl.className = 'column';
+      colEl.id = 'board-col-' + col.id;
+      colEl.ondragover = e => colDragOver(e, col.id);
+      colEl.ondragleave = e => colDragLeave(e, col.id);
+      colEl.ondrop = e => colDrop(e, col.id);
+
+      colEl.innerHTML = `
+        <div class="col-header" style="position:relative;">
+          <div class="col-title">
+            <div class="col-dot" style="background:${col.color}"></div>
+            ${col.label}
+            <span class="col-count" id="count-${col.id}">${colTasks.length}</span>
+          </div>
+          <button class="col-dots-btn" onclick="openColPop('${col.id}', this)">···</button>
+        </div>
+        <div class="col-body" id="col-${col.id}"></div>
+      `;
+
+      container.appendChild(colEl);
+    });
+
+    // Add column button
+    const addBtn = document.createElement('div');
+    addBtn.className = 'add-col-btn';
+    addBtn.title = 'Add column';
+    addBtn.innerHTML = '+';
+    addBtn.onclick = addColumn;
+    container.appendChild(addBtn);
+
+    // Populate cards
+    columns.forEach(col => {
+      const el = document.getElementById('col-' + col.id);
+      const colTasks = tasks.filter(t => t.column === col.id);
       if (!colTasks.length) { el.innerHTML = '<div class="empty-col">drag tasks here</div>'; return; }
       colTasks.forEach(task => el.appendChild(buildCard(task)));
-      applyFilter();
+      if (scrolls[col.id]) el.scrollTop = scrolls[col.id];
     });
+
+    applyFilter();
+  }
+
+  // ── COLUMN MANAGEMENT ──────────────────────────────────────
+  function openColPop(colId, btn) {
+    _colPopId = colId;
+    const col = columns.find(c => c.id === colId);
+    let pop = document.getElementById('col-popover');
+    if (!pop) {
+      pop = document.createElement('div');
+      pop.id = 'col-popover';
+      pop.className = 'col-popover';
+      pop.innerHTML = `
+        <input class="col-pop-input" id="col-pop-input" type="text"
+          placeholder="Column name…"
+          onkeydown="if(event.key==='Enter'){saveColName();closeColPop();}" />
+        <div class="col-pop-item" onclick="startColRename()">✏️ &nbsp;Rename</div>
+        <div class="col-pop-item" id="col-pop-color-row" onclick="openColColorPicker(this)">
+          <span>🎨 &nbsp;Dot colour</span>
+          <div id="col-dot-swatch" style="width:28px;height:20px;border-radius:4px;border:1px solid var(--border2);margin-left:auto;flex-shrink:0;"></div>
+        </div>
+        <div class="col-pop-item danger" id="col-pop-delete">🗑 &nbsp;Delete</div>
+      `;
+      document.body.appendChild(pop);
+    }
+    // Update handlers
+    pop.querySelector('#col-pop-delete').onclick = () => { deleteColumn(_colPopId); closeColPop(); };
+    // Set current colour
+    const rawColor = (col?.color || '#3b82f6').startsWith('#') ? (col?.color || '#3b82f6') : '#3b82f6';
+    _colPickerHex = rawColor;
+    try { _colPickerHue = hexToHsl(rawColor)[0]; } catch(e) {}
+    _colPickerChanged = false;
+    const swatch = pop.querySelector('#col-dot-swatch');
+    if (swatch) swatch.style.background = rawColor;
+    // Position
+    const rect = btn.getBoundingClientRect();
+    pop.style.top = (rect.bottom + 4) + 'px';
+    pop.style.left = Math.max(4, rect.left - 120) + 'px';
+    pop.querySelector('.col-pop-input').style.display = 'none';
+    pop.querySelector('.col-pop-input').value = col?.label || '';
+    pop.classList.add('open');
+    setTimeout(() => document.addEventListener('click', closeColPopOutside, {once:true}), 50);
+  }
+
+  function closeColPopOutside(e) {
+    const pop = document.getElementById('col-popover');
+    if (pop && !pop.contains(e.target)) closeColPop();
+    else if (pop && pop.classList.contains('open')) setTimeout(() => document.addEventListener('click', closeColPopOutside, {once:true}), 50);
+  }
+
+  function closeColPop() {
+    const pop = document.getElementById('col-popover');
+    if (pop) pop.classList.remove('open');
+  }
+
+  function startColRename() {
+    const input = document.getElementById('col-pop-input');
+    input.style.display = 'block';
+    input.focus();
+    input.select();
+  }
+
+  function saveColName() {
+    const input = document.getElementById('col-pop-input');
+    const newLabel = input.value.trim();
+    if (!newLabel || !_colPopId) return;
+    const col = columns.find(c => c.id === _colPopId);
+    if (col) { col.label = newLabel; saveColumns(); renderBoard(); }
+  }
+
+  function openColColorPicker(rowEl) {
+    // Build or reuse secondary colour picker popover
+    let picker = document.getElementById('col-color-picker-pop');
+    if (!picker) {
+      picker = document.createElement('div');
+      picker.id = 'col-color-picker-pop';
+      picker.style.cssText = 'position:fixed;z-index:500;background:var(--bg);border:1px solid var(--border2);border-radius:10px;padding:12px;box-shadow:0 6px 24px rgba(0,0,0,.16);width:210px;display:none;';
+      picker.innerHTML = `
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-weight:600;margin-bottom:8px;">Colour</div>
+        <div style="position:relative;margin-bottom:8px;">
+          <canvas id="col-grad-canvas" width="186" height="120" style="border-radius:6px;display:block;cursor:crosshair;"></canvas>
+          <div id="col-grad-cursor" style="position:absolute;width:14px;height:14px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.4);pointer-events:none;transform:translate(-50%,-50%);top:30px;left:93px;"></div>
+        </div>
+        <div style="position:relative;height:24px;margin-bottom:10px;">
+          <canvas id="col-hue-canvas" width="186" height="14" style="border-radius:7px;display:block;margin-top:5px;cursor:pointer;"></canvas>
+          <div id="col-hue-cursor" style="position:absolute;top:0;width:22px;height:22px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.25);pointer-events:none;transform:translateX(-50%);left:50%;"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div id="col-color-preview" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--border2);flex-shrink:0;"></div>
+          <input type="text" id="col-pop-hex" maxlength="7" placeholder="#3b82f6"
+            style="font-family:var(--mono);font-size:11px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:4px 8px;color:var(--text);outline:none;flex:1;box-sizing:border-box;"
+            oninput="onColHexInput(this.value)"
+            onkeydown="if(event.key==='Enter'){saveColColor(document.getElementById('col-pop-hex').value);document.getElementById('col-color-picker-pop').style.display='none';closeColPop();}"/>
+        </div>`;
+      document.body.appendChild(picker);
+    }
+    // Position next to the row
+    const rect = rowEl.getBoundingClientRect();
+    picker.style.top = rect.top + 'px';
+    picker.style.left = (rect.right + 6) + 'px';
+    // Populate
+    const prev = picker.querySelector('#col-color-preview');
+    const hi = picker.querySelector('#col-pop-hex');
+    if (prev) prev.style.background = _colPickerHex;
+    if (hi) hi.value = _colPickerHex;
+    picker.style.display = 'block';
+    setTimeout(() => { drawColGradCanvas(); drawColHueCanvas(); setupColPickerEvents(); }, 20);
+    setTimeout(() => document.addEventListener('click', closeColColorPicker, {once:true}), 60);
+  }
+
+  function closeColColorPicker(e) {
+    const picker = document.getElementById('col-color-picker-pop');
+    if (picker && !picker.contains(e.target)) {
+      picker.style.display = 'none';
+    } else if (picker && picker.style.display !== 'none') {
+      setTimeout(() => document.addEventListener('click', closeColColorPicker, {once:true}), 60);
+    }
+  }
+
+  function saveColColor(hex) {
+    if (!hex || !/^#[0-9a-fA-F]{6}$/.test(hex)) return;
+    const col = columns.find(c => c.id === _colPopId);
+    if (col) { col.color = hex; saveColumns(); renderBoard(); }
+  }
+
+  let _colPickerHex = '#3b82f6';
+  let _colPickerHue = 220;
+  let _colPickerCurX = 0.5;
+  let _colPickerCurY = 0.25;
+  let _colPickerChanged = false;
+
+  function drawColGradCanvas() {
+    const cv = document.getElementById('col-grad-canvas'); if (!cv) return;
+    const ctx = cv.getContext('2d'), w = cv.width, h = cv.height;
+    const hg = ctx.createLinearGradient(0,0,w,0);
+    hg.addColorStop(0,'#fff'); hg.addColorStop(1,`hsl(${_colPickerHue},100%,50%)`);
+    ctx.fillStyle = hg; ctx.fillRect(0,0,w,h);
+    const dg2 = ctx.createLinearGradient(0,0,0,h);
+    dg2.addColorStop(0,'rgba(0,0,0,0)'); dg2.addColorStop(1,'#000');
+    ctx.fillStyle = dg2; ctx.fillRect(0,0,w,h);
+    const cur = document.getElementById('col-grad-cursor');
+    if (cur) { cur.style.left = (_colPickerCurX * w) + 'px'; cur.style.top = (_colPickerCurY * h) + 'px'; }
+  }
+
+  function drawColHueCanvas() {
+    const cv = document.getElementById('col-hue-canvas'); if (!cv) return;
+    const ctx = cv.getContext('2d'), w = cv.width, h = cv.height;
+    const g = ctx.createLinearGradient(0,0,w,0);
+    for (let i = 0; i <= 360; i += 30) g.addColorStop(i/360, `hsl(${i},100%,50%)`);
+    ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+    const cur = document.getElementById('col-hue-cursor');
+    if (cur) { cur.style.left = (_colPickerHue / 360 * w) + 'px'; cur.style.background = `hsl(${_colPickerHue},100%,50%)`; }
+  }
+
+  function pickColGrad(e, cv) {
+    const d = cv.getBoundingClientRect();
+    const x = Math.max(0, Math.min(cv.width, e.clientX - d.left));
+    const y = Math.max(0, Math.min(cv.height, e.clientY - d.top));
+    _colPickerCurX = x / cv.width; _colPickerCurY = y / cv.height;
+    const px = cv.getContext('2d').getImageData(Math.round(x), Math.round(y), 1, 1).data;
+    _colPickerHex = rgbToHex(px[0], px[1], px[2]);
+    _colPickerChanged = true;
+    drawColGradCanvas(); updateColPickerUI(_colPickerHex);
+  }
+
+  function pickColHue(e, cv) {
+    const d = cv.getBoundingClientRect();
+    const x = Math.max(0, Math.min(cv.width, e.clientX - d.left));
+    _colPickerHue = Math.round(x / cv.width * 360);
+    _colPickerChanged = true;
+    drawColHueCanvas(); drawColGradCanvas();
+    const gcv = document.getElementById('col-grad-canvas');
+    if (gcv) {
+      const px = gcv.getContext('2d').getImageData(Math.round(_colPickerCurX * gcv.width), Math.round(_colPickerCurY * gcv.height), 1, 1).data;
+      _colPickerHex = rgbToHex(px[0], px[1], px[2]);
+      updateColPickerUI(_colPickerHex);
+    }
+  }
+
+  function updateColPickerUI(hex) {
+    _colPickerHex = hex;
+    const prev = document.getElementById('col-color-preview'); if (prev) prev.style.background = hex;
+    const hi = document.getElementById('col-pop-hex'); if (hi && document.activeElement !== hi) hi.value = hex;
+    saveColColor(hex);
+  }
+
+  function onColHexInput(val) {
+    if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+      _colPickerHex = val; _colPickerChanged = true;
+      try { _colPickerHue = hexToHsl(val)[0]; drawColHueCanvas(); drawColGradCanvas(); } catch(e) {}
+      updateColPickerUI(val);
+    }
+  }
+
+  function setupColPickerEvents() {
+    const cv = document.getElementById('col-grad-canvas');
+    const hv = document.getElementById('col-hue-canvas');
+    if (cv && !cv._cs) {
+      cv._cs = true;
+      let dr = false;
+      cv.addEventListener('mousedown', e => { dr = true; pickColGrad(e, cv); });
+      document.addEventListener('mousemove', e => { if (dr) pickColGrad(e, cv); });
+      document.addEventListener('mouseup', () => { dr = false; });
+    }
+    if (hv && !hv._cs) {
+      hv._cs = true;
+      let dr = false;
+      hv.addEventListener('mousedown', e => { dr = true; pickColHue(e, hv); });
+      document.addEventListener('mousemove', e => { if (dr) pickColHue(e, hv); });
+      document.addEventListener('mouseup', () => { dr = false; });
+    }
+  }
+
+  function deleteColumn(colId) {
+    if (columns.length <= 1) return;
+    // Move tasks in deleted column to first remaining column
+    const fallback = columns.find(c => c.id !== colId)?.id || columns[0].id;
+    tasks.forEach(t => { if (t.column === colId) t.column = fallback; });
+    columns = columns.filter(c => c.id !== colId);
+    saveColumns();
+    renderBoard();
+    scheduleSave();
+  }
+
+  function addColumn() {
+    const id = 'col_' + Date.now();
+    const colors = ['#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4'];
+    const color = colors[columns.length % colors.length];
+    columns.push({ id, label: 'New Column', color });
+    saveColumns();
+    renderBoard();
+    // Auto-open rename on new column
+    setTimeout(() => {
+      const btn = document.querySelector(`#board-col-${id} .col-dots-btn`);
+      if (btn) { openColPop(id, btn); startColRename(); }
+    }, 100);
+  }
+
+  function saveColumns() {
+    localStorage.setItem(COLS_KEY, JSON.stringify(columns));
+  }
+
+  function loadColumns() {
+    const saved = localStorage.getItem(COLS_KEY);
+    if (saved) {
+      try { columns = JSON.parse(saved); } catch(e) {}
+    }
   }
 
   function buildCard(task) {
@@ -1282,6 +1583,7 @@
     localStorage.setItem(TAGCOLORS_KEY, JSON.stringify(tagColors));
     // Update tasks
     tasks.forEach(t => { if (t.tag === oldTag) t.tag = newTag; });
+    loadColumns();
     rebuildTagSelect();
     rebuildFilterBar();
     renderTagManager();
@@ -1302,6 +1604,7 @@
     // reassign tasks with deleted tag to first available tag or 'other'
     const fallback = allTags()[0] || 'other';
     tasks.forEach(t => { if (t.tag === tag) t.tag = fallback; });
+    loadColumns();
     rebuildTagSelect();
     rebuildFilterBar();
     renderTagManager();
@@ -1327,6 +1630,7 @@
     localStorage.setItem(TAGS_KEY, JSON.stringify(customTags));
     localStorage.setItem(TAGCOLORS_KEY, JSON.stringify(tagColors));
     input.value = '';
+    loadColumns();
     rebuildTagSelect();
     rebuildFilterBar();
     document.getElementById('task-tag-input').value = val;
